@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Example Serverless API using Vanilla Cloudformation, API Gateway, Lambda, and DynamoDB
+Resources:
+  BaristaBattlerAPI:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: API to load and store data for Barista Battler
+      Body:
+        openapi: 3.0.0
+        info:
+          title: Barista Battler API
+          description: API to load and store data for Barista Battler
+          version: 0.1.0
+        servers:
+          - url: http://api.example.com/v1
+            description: Main URL for API for now
+        paths:
+          /baristaTeam/{round}:
+            get:
+              summary: Returns a Barista Team for a given round
+              description: Optional extra description
+                    parameters:
+                      - in: path
+                        name: round
+                        schema:
+                          type: integer
+                        required: true
+                        description: Round number that the current player is at
+              responses:
+                "200": # status code
+                  description: A JSON object representing a Team of Baristas
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          round:
+                            type: integer
+                          baristas:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                currentHealth:
+                                  type: integer
+                                currentDmg:
+                                  type: integer
+                        example:
+                          id: 1
+                          round: 1
+                          baristas:
+                            - id: 1
+                              currentHealth: 4
+                              currentDmg: 5
+      ApiKeySourceType: HEADER
+
+  deploymentBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName:
+        'Fn::Join':
+          - ''
+          - - Ref: Stage
+            - '-bods-full-load'
+    
+  ProxyAPIHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs22.x
+      Role: arn:aws:iam::111122223333:role/lambda-role
+      Handler: index.handler
+      PackageType: Zip
+      Code:
+        ZipFile: |
+          const { S3Client, ListBucketsCommand } = require("@aws-sdk/client-s3");
+          const s3 = new S3Client({ region: "us-east-1" }); // replace "us-east-1" with your AWS Region
+
+          exports.handler = async function(event) {
+            const command = new ListBucketsCommand({});
+            const response = await s3.send(command);
+            return response.Buckets;
+          };
+      Description: List Amazon S3 buckets in us-east-1.
+      TracingConfig:
+        Mode: Active
+    
+  ProxyResourceAny:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      ResourceId:
+        Ref: ProxyResource
+      RestApiId:
+        Ref: API
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Arn}/invocations
+          - Arn:
+              Fn::GetAtt:
+              - RestorerLambda
+              - Arn
