@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Example Serverless API using Vanilla Cloudformation, API Gateway, Lambda, and DynamoDB
+Parameters:
+  BucketName:
+    Type: String
+    Description: The name of the S3 Bucket to create
 Resources:
   BaristaBattlerAPI:
     Type: AWS::ApiGateway::RestApi
@@ -12,20 +16,20 @@ Resources:
           description: API to load and store data for Barista Battler
           version: 0.1.0
         servers:
-          - url: http://api.example.com/v1
+          - url: http://api.barista.com/v1
             description: Main URL for API for now
         paths:
           /baristaTeam/{round}:
             get:
               summary: Returns a Barista Team for a given round
               description: Optional extra description
-                    parameters:
-                      - in: path
-                        name: round
-                        schema:
-                          type: integer
-                        required: true
-                        description: Round number that the current player is at
+              parameters:
+                - in: path
+                  name: round
+                  schema:
+                    type: integer
+                  required: true
+                  description: Round number that the current player is at
               responses:
                 "200": # status code
                   description: A JSON object representing a Team of Baristas
@@ -57,15 +61,6 @@ Resources:
                               currentHealth: 4
                               currentDmg: 5
       ApiKeySourceType: HEADER
-
-  deploymentBucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName:
-        'Fn::Join':
-          - ''
-          - - Ref: Stage
-            - '-bods-full-load'
     
   ProxyAPIHandlerLambda:
     Type: AWS::Lambda::Function
@@ -74,17 +69,7 @@ Resources:
       Role: arn:aws:iam::111122223333:role/lambda-role
       Handler: index.handler
       PackageType: Zip
-      Code:
-        ZipFile: |
-          const { S3Client, ListBucketsCommand } = require("@aws-sdk/client-s3");
-          const s3 = new S3Client({ region: "us-east-1" }); // replace "us-east-1" with your AWS Region
-
-          exports.handler = async function(event) {
-            const command = new ListBucketsCommand({});
-            const response = await s3.send(command);
-            return response.Buckets;
-          };
-      Description: List Amazon S3 buckets in us-east-1.
+      Description: Proxy Hander Lambda for Barista API
       TracingConfig:
         Mode: Active
     
