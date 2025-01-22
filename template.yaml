@@ -9,79 +9,85 @@ Resources:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Description: API to load and store data for Barista Battler
-      Body:
-        openapi: 3.0.0
-        info:
-          title: Barista Battler API
-          description: API to load and store data for Barista Battler
-          version: 0.1.0
-        servers:
-          - url: http://api.barista.com/v1
-            description: Main URL for API for now
-        paths:
-          /baristaTeam/{round}:
-            get:
-              summary: Returns a Barista Team for a given round
-              description: Optional extra description
-              parameters:
-                - in: path
-                  name: round
-                  schema:
-                    type: integer
-                  required: true
-                  description: Round number that the current player is at
-              responses:
-                "200": # status code
-                  description: A JSON object representing a Team of Baristas
-                  content:
-                    application/json:
-                      schema:
-                        type: object
-                        properties:
-                          id:
-                            type: integer
-                          round:
-                            type: integer
-                          baristas:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: integer
-                                currentHealth:
-                                  type: integer
-                                currentDmg:
-                                  type: integer
-                        example:
-                          id: 1
-                          round: 1
-                          baristas:
-                            - id: 1
-                              currentHealth: 4
-                              currentDmg: 5
-      ApiKeySourceType: HEADER
-    
-  ProxyAPIHandlerLambda:
-    Type: AWS::Lambda::Function
+      Name: barista-battler-api
+      # Body:
+      #   openapi: 3.0.0
+      #   info:
+      #     title: Barista Battler API
+      #     description: API to load and store data for Barista Battler
+      #     version: 0.1.0
+      #   servers:
+      #     - url: http://api.barista.com/v1
+      #       description: Main URL for API for now
+      #   paths:
+      #     /baristaTeam/{round}:
+      #       get:
+      #         summary: Returns a Barista Team for a given round
+      #         description: Optional extra description
+      #         parameters:
+      #           - in: path
+      #             name: round
+      #             schema:
+      #               type: integer
+      #             required: true
+      #             description: Round number that the current player is at
+      #         responses:
+      #           "200": # status code
+      #             description: A JSON object representing a Team of Baristas
+      #             content:
+      #               application/json:
+      #                 schema:
+      #                   type: object
+      #                   properties:
+      #                     id:
+      #                       type: integer
+      #                     round:
+      #                       type: integer
+      #                     baristas:
+      #                       type: array
+      #                       items:
+      #                         type: object
+      #                         properties:
+      #                           id:
+      #                             type: integer
+      #                           currentHealth:
+      #                             type: integer
+      #                           currentDmg:
+      #                             type: integer
+      #                   example:
+      #                     id: 1
+      #                     round: 1
+      #                     baristas:
+      #                       - id: 1
+      #                         currentHealth: 4
+      #                         currentDmg: 5
+      # ApiKeySourceType: HEADER
+  BaristaBattlerAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - ProxyResourceAnyMethod
     Properties:
-      Runtime: nodejs22.x
-      Role: arn:aws:iam::111122223333:role/lambda-role
-      Handler: index.handler
-      PackageType: Zip
-      Description: Proxy Hander Lambda for Barista API
-      TracingConfig:
-        Mode: Active
-    
-  ProxyResourceAny:
+      RestApiId: !Ref BaristaBattlerAPI
+      StageName: dev
+
+  # Route 1
+  BaristaBattlerAPIResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt BaristaBattlerAPI.RootResourceId
+      PathPart: baristaTeam
+      RestApiId: !Ref BaristaBattlerAPI
+
+  ProxyResourceAnyMethod:
     Type: AWS::ApiGateway::Method
     Properties:
+      ApiKeyRequired: false
       AuthorizationType: NONE
       HttpMethod: ANY
       ResourceId:
-        Ref: ProxyResource
+        Ref: BaristaBattlerAPIResource
       RestApiId:
-        Ref: API
+        Ref: BaristaBattlerAPI
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -89,5 +95,75 @@ Resources:
           - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Arn}/invocations
           - Arn:
               Fn::GetAtt:
-              - RestorerLambda
+              - ProxyAPIHandlerLambda
               - Arn
+
+  HelloWorldFunctionApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ProxyAPIHandlerLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        !Join
+        - ''
+        - - 'arn:'
+          - !Ref AWS::Partition
+          - ':execute-api:'
+          - !Ref AWS::Region
+          - ':'
+          - !Ref AWS::AccountId
+          - ':'
+          - !Ref BaristaBattlerAPI
+          - /*/*
+
+  ProxyAPIHandlerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: nodejs22.x
+      Role: !GetAtt ProxyAPIHandlerLambdaRole.Arn
+      Handler: index.handler
+      PackageType: Zip
+      Description: Proxy Hander Lambda for Barista API
+      TracingConfig:
+        Mode: Active
+    DependsOn: ProxyAPIHandlerLambdaRole
+
+  ProxyAPIHandlerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: AppendToLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: "*"
+
+Outputs:
+  ApiUrl:
+    Description: URL of the REST API.
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Ref: BaristaBattlerAPI
+        - .execute-api.
+        - Ref: AWS::Region
+        - .
+        - Ref: AWS::URLSuffix
+        - /dev

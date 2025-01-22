@@ -13,7 +13,7 @@ Deploy using
 npm run package
 ```
 
-  and (still work in progress)
+  and
 
 ```
 npm run deploy

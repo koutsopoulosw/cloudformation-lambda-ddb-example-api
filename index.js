@@ -1,5 +1,5 @@
-export const handler = function(event, context, callback) {
-  console.log('Received event:', JSON.stringify(event, null, 2));
+module.exports.handler = async (event) => {
+    console.log('Received event:', JSON.stringify(event, null, 2));
   var res ={
       "statusCode": 200,
       "headers": {
@@ -23,5 +23,5 @@ export const handler = function(event, context, callback) {
   } 
   
   res.body = "Hello, " + greeter + "!";
-  callback(null, res);
+  return res;
 };

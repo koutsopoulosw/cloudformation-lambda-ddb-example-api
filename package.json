@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "package": "aws cloudformation package --template-file template.yaml --s3-bucket koutsopoulosw-deployment --output-template-file outputSamTemplate.yml --s3-prefix cloudformation-lambda-ddb-example-api --region us-east-1",
-    "deploy": "aws cloudformation deploy --template-file outputSamTemplate.yml --stack-name REDACTED --capabilities CAPABILITY_NAMED_IAM --parameter-overrides file://cfparameters.json"
+    "deploy": "aws cloudformation deploy --template-file outputSamTemplate.yml --stack-name cloudformation-lambda-ddb-example-api --capabilities CAPABILITY_NAMED_IAM --parameter-overrides BucketName=koutsopoulosw-deployment --region us-east-1"
   },
   "keywords": [],
   "author": "",
