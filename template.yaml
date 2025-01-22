@@ -153,6 +153,41 @@ Resources:
             - logs:CreateLogStream
             - logs:PutLogEvents
             Resource: "*"
+      - PolicyName: BaristaTableAccessPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:ConditionCheckItem
+            - dynamodb:PutItem
+            - dynamodb:DescribeTable
+            - dynamodb:DeleteItem
+            - dynamodb:GetItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            Resource: !GetAtt BaristaTeamInstanceTable.Arn
+
+  BaristaTeamInstanceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PROVISIONED
+      AttributeDefinitions:
+        - AttributeName: round
+          AttributeType: N
+        - AttributeName: wins
+          AttributeType: N
+      KeySchema:
+        - AttributeName: round
+          KeyType: HASH
+        - AttributeName: wins
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
 
 Outputs:
   ApiUrl:
