@@ -75,7 +75,7 @@ Resources:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt BaristaBattlerAPI.RootResourceId
-      PathPart: baristaTeam
+      PathPart: '{proxy+}'
       RestApiId: !Ref BaristaBattlerAPI
 
   ProxyResourceAnyMethod:
@@ -127,7 +127,12 @@ Resources:
       Description: Proxy Hander Lambda for Barista API
       TracingConfig:
         Mode: Active
-    DependsOn: ProxyAPIHandlerLambdaRole
+      Environment:
+        Variables:
+          BARISTA_TEAM_TABLENAME: BaristaTeamInstance
+    DependsOn: 
+    - ProxyAPIHandlerLambdaRole
+    - BaristaTeamInstanceTable
 
   ProxyAPIHandlerLambdaRole:
     Type: AWS::IAM::Role
@@ -174,6 +179,7 @@ Resources:
   BaristaTeamInstanceTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      TableName: BaristaTeamInstance
       BillingMode: PROVISIONED
       AttributeDefinitions:
         - AttributeName: round

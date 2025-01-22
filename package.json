@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "package": "aws cloudformation package --template-file template.yaml --s3-bucket koutsopoulosw-deployment --output-template-file outputSamTemplate.yml --s3-prefix cloudformation-lambda-ddb-example-api --region us-east-1",
     "deploy": "aws cloudformation deploy --template-file outputSamTemplate.yml --stack-name cloudformation-lambda-ddb-example-api --capabilities CAPABILITY_NAMED_IAM --parameter-overrides BucketName=koutsopoulosw-deployment --region us-east-1"
   },
@@ -12,6 +12,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "aws-sdk": "^2.1692.0"
+    "@aws-sdk/client-dynamodb": "^3.733.0",
+    "@aws-sdk/lib-dynamodb": "^3.733.0",
+    "aws-sdk": "^2.1692.0",
+    "aws-sdk-client-mock": "^4.1.0",
+    "aws-sdk-client-mock-jest": "^4.1.0",
+    "ts-jest": "^29.2.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.26.3",
+    "@babel/preset-env": "^7.26.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0"
   }
 }

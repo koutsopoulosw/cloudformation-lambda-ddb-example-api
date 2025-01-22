@@ -1,27 +1,73 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { QueryCommand, PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+const client = new DynamoDBClient({ region: process.env.AWS_REGION });
+const docClient = DynamoDBDocumentClient.from(client);
+const tableName = process.env.BARISTA_TEAM_TABLENAME;
+
 module.exports.handler = async (event) => {
-    console.log('Received event:', JSON.stringify(event, null, 2));
-  var res ={
-      "statusCode": 200,
-      "headers": {
-          "Content-Type": "*/*"
-      }
+  console.log('Received event:', JSON.stringify(event, null, 2));
+  var response = {
+    "statusCode": 200,
+    "headers": {
+      "Content-Type": "*/*"
+    }
   };
-  var greeter = 'World';
-  if (event.greeter && event.greeter!=="") {
-      greeter =  event.greeter;
-  } else if (event.body && event.body !== "") {
-      var body = JSON.parse(event.body);
-      if (body.greeter && body.greeter !== "") {
-          greeter = body.greeter;
+
+  const path = event.path.split("/")
+  const method = event.httpMethod
+  var command = null;
+
+  switch (path[0]) {
+    
+    // /baristaTeamInstance path can either POST a new team to the DB or GET a randomized one
+    case 'baristaTeamInstance':
+      switch(method) {
+        
+        case 'POST':
+          if (!event.body) 
+            throw new Error('baristaTeamInstance POST requires baristaTeamInstance in body')
+
+          command = new PutCommand({
+            TableName: tableName,
+            Item: event.body
+          });
+          
+          const res = await docClient.send(command);
+          console.log(res)    
+          break;
+
+        case 'GET':
+          const round = event.queryStringParameters.round
+
+          if (!round)
+            throw new Error('/baristaTeamInstance GET requires query parameter of ?round=[Number]')
+
+          command = new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression:
+              "round = :round",
+            ExpressionAttributeValues: {
+              ":round": round
+            },
+            ConsistentRead: false,
+          });
+
+          const getRes = await docClient.send(command);
+          console.log(getRes)
+          break;
+
+        default:
+          throw new error('Unimplemented Method for /baristaTeamInstance');
       }
-  } else if (event.queryStringParameters && event.queryStringParameters.greeter && event.queryStringParameters.greeter !== "") {
-      greeter = event.queryStringParameters.greeter;
-  } else if (event.multiValueHeaders && event.multiValueHeaders.greeter && event.multiValueHeaders.greeter != "") {
-      greeter = event.multiValueHeaders.greeter.join(" and ");
-  } else if (event.headers && event.headers.greeter && event.headers.greeter != "") {
-      greeter = event.headers.greeter;
-  } 
-  
-  res.body = "Hello, " + greeter + "!";
-  return res;
+
+      break;
+
+    default:
+      break;
+  }
+
+  response.body = "Success!";
+  console.log(response)
+  return response;
 };
